@@ -1,8 +1,12 @@
 import gym
+import numpy as np
+
 import gym_pcgrl
 from gym_pcgrl.envs.helper import get_string_map
 from gym_pcgrl.envs.pcgrl_env import PcgrlEnv
 from gym_pcgrl.envs.probs.problem import Problem
+import network
+from network import RewardNet
 
 import requests 
 import json
@@ -254,7 +258,9 @@ def evaluate_levels_with_criteria(level_stats_A, level_stats_B, game=None):
         else:
             return None
 
+
 def get_dict_from_files(path = OUT_FILE):
+    '''Takes the path to a file, where it reads every line and converts them into an array of python objects.'''
     with open(path, "r", encoding="utf-8") as f:
         lines = f.readlines()
     data = []
@@ -262,7 +268,35 @@ def get_dict_from_files(path = OUT_FILE):
         if line.strip():
             data.append(json.loads(s = line))
     return data
-    
+
+
+def get_winner_and_matrix(data, label_selection = "LLM"):
+    '''Takes a list of dictionarys (data) which include LLM and criteria Labels, as well as the level matrices.  
+    The label_selection can be either "LLM" or "Code". This determines from which label the winner/loser is chosen.  
+    Returns a list of tupels of matrices, where the first is the winner and the second is the loser. If there is no
+    winner or looser, this level pair is not included.'''
+
+    if label_selection == "LLM":
+        chosen_label = "LLM_label"
+    elif label_selection == "Code":
+        chosen_label = "criteria_label"
+    else:
+        raise ValueError(f"label_selection must be 'LLM' or 'Code', got {label_selection}")
+
+    winners_and_losers = []
+    for entry in data:
+        label = entry[chosen_label]
+        if label == "A":
+            winner = np.array(entry["level_A"])
+            loser = np.array(entry["level_B"])
+            winners_and_losers.append((winner, loser))
+        elif label == "B":
+            winner = np.array(entry["level_B"])
+            loser = np.array(entry["level_A"])
+            winners_and_losers.append((winner, loser))
+
+    return winners_and_losers
+
 
 
 def evaluate_LLM_answers(num_tests, out_file = OUT_FILE, print_every_test = True):
@@ -329,6 +363,32 @@ def evaluate_LLM_answers(num_tests, out_file = OUT_FILE, print_every_test = True
     print(f"Total passed time: {sum(passed_times)} ")
 
 
+def test():
+    # Training Data
+    training_data = get_dict_from_files("pairs_none.jsonl")
+    train_pairs = get_winner_and_matrix(training_data, "Code")
+    winners, losers = network.extract_training_data(train_pairs)
+
+    # Test Data to calculate accuracy of Reward Network
+    test_data = get_dict_from_files("pairs_medium.jsonl")
+    test_pairs = get_winner_and_matrix(test_data, "Code")
+    test_winners, test_losers = network.extract_training_data(test_pairs)
+
+    # Training
+    net = RewardNet()
+    optimizer = network.train(net, winners, losers)
+
+    # Test Accuracy
+    accuracy = network.evaluate(net, winners, losers)
+    print("Accuracy of Reward Network: ", accuracy)
+
+
+    
+
+
 if __name__ == "__main__":
-    evaluate_LLM_answers(50, out_file="pairs_medium.jsonl")
+    #evaluate_LLM_answers(50, out_file="pairs_medium.jsonl")
     #test_Connection()
+    test()
+
+
