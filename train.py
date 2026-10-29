@@ -1,6 +1,10 @@
 #pip install tensorflow==1.15
 #Install stable-baselines as described in the documentation
 
+# WITHOUT THIS, THE TERMINAL WILL PRINT MANY WARNINGS THAT THE LIBRARYS ARE DEPRECATED
+import warnings
+warnings.filterwarnings("ignore") 
+
 import model
 from model import FullyConvPolicyBigMap, FullyConvPolicySmallMap, CustomPolicyBigMap, CustomPolicySmallMap
 from utils import get_exp_name, max_exp_idx, load_model, make_vec_envs
@@ -36,10 +40,10 @@ def callback(_locals, _globals):
                 best_mean_reward = mean_reward
                 # Example for saving best model
                 print("Saving new best model")
-                _locals['self'].save(os.path.join(log_dir, 'best_model.pkl'))
+                _locals['self'].model.save(os.path.join(log_dir, 'best_model.pkl'))
             else:
                 print("Saving latest model")
-                _locals['self'].save(os.path.join(log_dir, 'latest_model.pkl'))
+                _locals['self'].model.save(os.path.join(log_dir, 'latest_model.pkl'))
         else:
             print('{} monitor entries'.format(len(x)))
             pass
@@ -62,7 +66,7 @@ def main(game, representation, experiment, steps, n_cpu, render, logging, **kwar
             policy = CustomPolicySmallMap
     if game == "binary":
         kwargs['cropped_size'] = 28
-    elif game == "zelda":
+    elif game ==  "zelda":
         kwargs['cropped_size'] = 22
     elif game == "sokoban":
         kwargs['cropped_size'] = 10
@@ -97,10 +101,12 @@ def main(game, representation, experiment, steps, n_cpu, render, logging, **kwar
 game = 'binary'
 representation = 'narrow'
 experiment = None
-steps = 1e8
+#steps = 1e8
+steps = 20000
 render = False
 logging = True
-n_cpu = 50
+#n_cpu = 50
+n_cpu = 5
 kwargs = {
     'resume': False
 }
