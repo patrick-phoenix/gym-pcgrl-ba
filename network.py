@@ -23,7 +23,7 @@ def extract_training_data(list_winner_loser : list):
     '''Takes a List of pairs of matrices that represent a generated level.  
     The first represents the winner and the second, the loser (the worse level of them both).  
         
-    Returns two tensors, with flattend levels. The reulting shape is (number of pairs x level size).  
+    Returns two tensors, with flattened levels. The resulting shape is (number of pairs x level size).  
     The first tensor represents the winners and the second tensor, the losers.'''
 
     level_pairs = len(list_winner_loser)
@@ -36,16 +36,25 @@ def extract_training_data(list_winner_loser : list):
     losers = torch.zeros(level_pairs, level_size)
 
     for index, (w, l) in enumerate(list_winner_loser):
-        winners[index] = torch.tensor(w.flatten())
-        losers[index] = torch.tensor(l.flatten())
+        winners[index] = level_to_tensor(w)
+        losers[index] = level_to_tensor(l)
 
     return winners, losers
+
+
+def level_to_tensor(level):
+    '''Takes a 2d level (with numbers as tiles) and flattens it to a tensor, 
+    for using in a neural network.'''
+    return torch.tensor(level.flatten()).float()
 
 
 def train(net : RewardNet, winner_tensor : torch.Tensor, loser_tensor : torch.Tensor, 
           optimizer = None, learning_rate = 0.001, epochs = 100):
     if optimizer is None:
         optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
+
+    net.train()
+
     for i in range(epochs):
         optimizer.zero_grad()
         loss = calculate_loss(net, winner_tensor, loser_tensor)

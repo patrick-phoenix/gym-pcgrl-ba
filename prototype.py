@@ -14,14 +14,14 @@ import os
 import time
 
 
-key = '6abc3cebb2422d4ae6559a0d:ECT/8wbOjYk5XqCup2NYFcfCcqBXUEpj8LOl8+70WYM='
+key = os.environ["CAMPUS_KI_API_KEY"]
 url = "https://chat.kiconnect.nrw/api/v1/chat/completions"
 headers = {
     "Content-Type": "application/json",
     "Authorization": f"Bearer {key}"
 }
 MODEL = "gpt-6-studierende" 
-REASONING_EFFORT = "medium"
+REASONING_EFFORT = "low"
 TIMEOUT_SECONDS = 300
 OUT_FILE = "pairs.jsonl"
 
@@ -39,7 +39,7 @@ def test_Connection():
     }
     if REASONING_EFFORT is not None:
         data["reasoning_effort"] = REASONING_EFFORT
-    else:
+    if REASONING_EFFORT == "none" or REASONING_EFFORT is None:
         data["temperature"] = 0.0
 
     response = requests.post(url, headers=headers, json=data, timeout=30)
@@ -99,7 +99,7 @@ def send_2_levels(level_A, level_B, game = None):
     }
     if REASONING_EFFORT is not None:
         data["reasoning_effort"] = REASONING_EFFORT
-    else:
+    if REASONING_EFFORT == "none" or REASONING_EFFORT is None:
         data["temperature"] = 0.0
 
     response = requests.post(url, headers=headers, json=data, timeout=TIMEOUT_SECONDS)
@@ -305,7 +305,8 @@ def evaluate_LLM_answers(num_tests, out_file = OUT_FILE, print_every_test = True
     passed_times = []
 
     for i in range(1, num_tests + 1):
-        print(f"\n================ Test {i} ================")
+        if print_every_test:
+            print(f"\n================ Test {i} ================")
         matrix_A, lvl_A, stats_A = get_gym_level()
         matrix_B, lvl_B, stats_B = get_gym_level()
 
@@ -387,8 +388,8 @@ def test():
 
 
 if __name__ == "__main__":
-    #evaluate_LLM_answers(50, out_file="pairs_medium.jsonl")
+    evaluate_LLM_answers(50, out_file="pairs_low.jsonl")
     #test_Connection()
-    test()
+    #test()
 
 
