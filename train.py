@@ -102,13 +102,16 @@ game = 'binary'
 representation = 'narrow'
 experiment = None
 #steps = 1e8
-steps = 20000
+steps = 10000
 render = False
 logging = True
 #n_cpu = 50
 n_cpu = 5
+reward_net_path = 'reward_net.pt' 
+
 kwargs = {
-    'resume': False
+    'resume': False,
+    'reward_net_path': reward_net_path
 }
 
 if __name__ == '__main__':

@@ -10,6 +10,10 @@ from stable_baselines import PPO2
 from stable_baselines.bench import Monitor
 from stable_baselines.common.vec_env import SubprocVecEnv, DummyVecEnv
 
+from reward_wrapper import RewardWrapper
+import network
+
+
 class RenderMonitor(Monitor):
     """
     Wrapper for the environment to save data in .csv files.
@@ -51,6 +55,11 @@ def make_env(env_name, representation, rank=0, log_dir=None, **kwargs):
         else:
             crop_size = kwargs.get('cropped_size', 28)
             env = wrappers.CroppedImagePCGRLWrapper(env_name, crop_size, **kwargs)
+        # Put the new Reward Wrapper, that swaps out the reward, in the middle
+        reward_net_path = kwargs.get('reward_net_path')
+        if reward_net_path is not None:   # If None, then env runs with original reward (no RewardWrapper)
+            reward_net = network.load_reward_network(reward_net_path)
+            env = RewardWrapper(env, reward_net)
         # RenderMonitor must come last
         if render or log_dir is not None and len(log_dir) > 0:
             env = RenderMonitor(env, rank, log_dir, **kwargs)
