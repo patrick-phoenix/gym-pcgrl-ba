@@ -5,7 +5,7 @@ from gym_pcgrl.envs.pcgrl_env import PcgrlEnv
 from gym_pcgrl.wrappers import CroppedImagePCGRLWrapper
 
 
-class Reward_Wrapper(gym.Wrapper):
+class RewardWrapper(gym.Wrapper):
     '''Wraps around the gym-pcgrl environments, so the learned Reward Network 
     can give the reward to the agent instead of the original code. '''
 
@@ -45,7 +45,7 @@ class Reward_Wrapper(gym.Wrapper):
 def test():
     env = CroppedImagePCGRLWrapper("binary-narrow-v0", 28)
     net = network.RewardNet()
-    wrapper = Reward_Wrapper(env, net)
+    wrapper = RewardWrapper(env, net)
     wrapper.reset()
 
     for i in range(10):

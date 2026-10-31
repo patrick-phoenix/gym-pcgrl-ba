@@ -5,6 +5,9 @@ import torch.nn as nn
 class RewardNet(nn.Module):
     def __init__(self, input_size=196, hidden_size=64, hidden_layers = 1):
         super().__init__()
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.hidden_layers = hidden_layers
         
         layers = [nn.Linear(input_size, hidden_size), nn.ReLU()]
         for _ in range(hidden_layers - 1):
@@ -17,29 +20,6 @@ class RewardNet(nn.Module):
     def forward(self, x):
         return self.net(x)
 
-
-
-def extract_training_data(list_winner_loser : list):
-    '''Takes a List of pairs of matrices that represent a generated level.  
-    The first represents the winner and the second, the loser (the worse level of them both).  
-        
-    Returns two tensors, with flattened levels. The resulting shape is (number of pairs x level size).  
-    The first tensor represents the winners and the second tensor, the losers.'''
-
-    level_pairs = len(list_winner_loser)
-    if level_pairs == 0:
-        raise ValueError("no pairs")
-
-    level_size = list_winner_loser[0][0].size
-
-    winners = torch.zeros(level_pairs, level_size)
-    losers = torch.zeros(level_pairs, level_size)
-
-    for index, (w, l) in enumerate(list_winner_loser):
-        winners[index] = level_to_tensor(w)
-        losers[index] = level_to_tensor(l)
-
-    return winners, losers
 
 
 def level_to_tensor(level):
@@ -85,7 +65,7 @@ def calculate_loss(net, winner_tensor, loser_tensor):
     return loss
 
 
-def evaluate(net, winner_tensor, loser_tensor):
+def accuracy(net, winner_tensor, loser_tensor):
     '''Calculates the accuracy of the RewardNet. 
     Returns a fractions of how many labels match with choice of RewardNet '''
     with torch.no_grad():
@@ -100,6 +80,29 @@ def evaluate(net, winner_tensor, loser_tensor):
             matches += 1
 
     return matches / level_count
+
+
+def load_reward_network(path):
+    '''Takes a path, where the configurations and the weights for the reward network
+      are saved and returns a reward network with these weights '''
+    checkpoint = torch.load(path)
+    net = RewardNet(**checkpoint["config"])
+    net.load_state_dict(checkpoint["state_dict"])
+    return net
+
+
+def save_reward_network(net, path):
+    '''Takes a reward network and path, where the configurations and weights for it
+      will be saved.'''
+    checkpoint = {
+        "config": {
+            "input_size": net.input_size,
+            "hidden_size": net.hidden_size,
+            "hidden_layers": net.hidden_layers,
+        },
+        "state_dict": net.state_dict(),
+    }
+    torch.save(checkpoint, path)
 
 
 
