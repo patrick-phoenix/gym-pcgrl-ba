@@ -11,6 +11,7 @@ import gym_pcgrl
 from gym_pcgrl.envs.helper import get_string_map
 from gym_pcgrl.envs.pcgrl_env import PcgrlEnv
 from gym_pcgrl.envs.probs.problem import Problem
+from gym_pcgrl.envs.probs.binary_prob import BinaryProblem
 import network
 from network import RewardNet
 
@@ -23,9 +24,11 @@ headers = {
     "Authorization": f"Bearer {key}"
 }
 MODEL = "gpt-6-studierende" 
-REASONING_EFFORT = "low"
+REASONING_EFFORT = "none"
 TIMEOUT_SECONDS = 300
 OUT_FILE = "pairs.jsonl"
+
+BINARY_PROBLEM = BinaryProblem()
 
 
 def test_Connection():
@@ -56,6 +59,23 @@ def send_2_levels(level_A, level_B, game = None):
     Returns the raw response from the API call."""
 
     if game == "binary":
+        # system_prompt = (
+        # "You are an evaluator for 2D grid levels from the PCGRL binary benchmark. "
+        # "Each level is a 14x14 grid. '#' is a wall, '.' is a walkable tile.\n\n"
+        # "Definitions:\n"
+        # "- Two walkable tiles are connected if they are direct horizontal or vertical neighbours (no diagonal moves).\n"
+        # "- A region is a maximal group of connected walkable tiles.\n"
+        # "- The path length of a level is the largest shortest-path distance (in steps, not tiles) "
+        # "between any two walkable tiles that lie in the same region.\n\n"
+        # "Compare the two levels with these rules, in this order:\n"
+        # "1. A level without any walkable tile is worse than any level that has at least one.\n"  
+        # "2. Regions: the level whose number of regions is closer to exactly 1 is better.\n"
+        # "3. Path length: if both levels are equally close to 1 region, the level with the longer path length is better.\n\n"
+        # "If both levels are equal under these rules, neither is better and you answer 'none'.\n\n"
+        # "Respond STRICTLY in valid JSON with exactly two keys: "
+        # "'reasoning' (short explanation: number of regions and path length you found for each level) "
+        # "and 'better_level' (value 'A', 'B' or 'none')."
+        #)
         system_prompt = (
         "You are an evaluator for 2D grid levels from the PCGRL binary benchmark. "
         "Each level is a 14x14 grid. '#' is a wall, '.' is a walkable tile.\n\n"
@@ -64,15 +84,19 @@ def send_2_levels(level_A, level_B, game = None):
         "- A region is a maximal group of connected walkable tiles.\n"
         "- The path length of a level is the largest shortest-path distance (in steps, not tiles) "
         "between any two walkable tiles that lie in the same region.\n\n"
-        "Compare the two levels with these rules, in this order:\n"
-        "1. A level without any walkable tile is worse than any level that has at least one.\n"  
-        "2. Regions: the level whose number of regions is closer to exactly 1 is better.\n"
-        "3. Path length: if both levels are equally close to 1 region, the level with the longer path length is better.\n\n"
-        "If both levels are equal under these rules, neither is better and you answer 'none'.\n\n"
+        "Compare the two levels with these rules:\n"
+        "1. A level without any walkable tile is worse than any level that has at least one.\n"
+        "2. Otherwise, compute a score for each level: score = path_length - 5 * (regions - 1). "
+        "The level with the higher score is better. "
+        "This means one region less is worth exactly 5 steps of path length.\n\n"
+        "Example: a level with 3 regions and path length 25 has score 25 - 5 * 2 = 15. "
+        "A level with 1 region and path length 12 has score 12 - 5 * 0 = 12. "
+        "So the first level is better, although it has more regions.\n\n"
+        "If both levels have the same score, neither is better and you answer 'none'.\n\n"
         "Respond STRICTLY in valid JSON with exactly two keys: "
-        "'reasoning' (short explanation: number of regions and path length you found for each level) "
+        "'reasoning' (short explanation: number of regions, path length and score you found for each level) "
         "and 'better_level' (value 'A', 'B' or 'none')."
-    )   
+        )   
     else: 
         system_prompt = (
         "You are an impartial game design evaluator for 2D tile-based video game levels. "
@@ -192,17 +216,52 @@ def get_gym_level(game=None):
     return level_matrix, short_level_string, env_stats
 
 
+# def evaluate_levels_with_criteria(level_stats_A, level_stats_B, game=None):
+#     """Takes the stats of 2 levels (dictionarys) and the name of the game.
+#     Calculates which level is the winner based on criteria, specified for the game. 
+#     Returns the String 'A', if level A is the winner. 
+#     Returns the String 'B', if level B is the winner.
+#     Returns None, if both levels are equally good/bad"""
+#     if game == "binary" :
+#         regions_A = level_stats_A["regions"]
+#         regions_B = level_stats_B["regions"]
+#         path_length_A = level_stats_A["path-length"]
+#         path_length_B = level_stats_B["path-length"]
+
+#         # If a level has 0 regions it's only walls. this shouldn't be allowed.
+#         if regions_A == 0:
+#             if regions_B == 0:
+#                 return None
+#             else:
+#                 return "B"
+#         elif regions_B == 0:
+#             return "A"
+
+#         # Levels with regions closer to 1 are better
+#         if regions_A < regions_B:
+#             return "A"
+#         elif regions_A > regions_B:
+#             return "B"
+
+#         # If both have same number of regions, the level with longest path_length wins
+#         if path_length_A > path_length_B:
+#             return "A"
+#         elif path_length_A < path_length_B:
+#             return "B"
+#         else:
+#             return None
+
 def evaluate_levels_with_criteria(level_stats_A, level_stats_B, game=None):
     """Takes the stats of 2 levels (dictionarys) and the name of the game.
-    Calculates whicht level is the winner based on criteria, specified for the game. 
+    Calculates which level is the winner based on criteria, specified for the game. 
     Returns the String 'A', if level A is the winner. 
     Returns the String 'B', if level B is the winner.
     Returns None, if both levels are equally good/bad"""
     if game == "binary" :
+        problem = BINARY_PROBLEM
+
         regions_A = level_stats_A["regions"]
         regions_B = level_stats_B["regions"]
-        path_length_A = level_stats_A["path-length"]
-        path_length_B = level_stats_B["path-length"]
 
         # If a level has 0 regions it's only walls. this shouldn't be allowed.
         if regions_A == 0:
@@ -213,16 +272,12 @@ def evaluate_levels_with_criteria(level_stats_A, level_stats_B, game=None):
         elif regions_B == 0:
             return "A"
 
-        # Levels with regions closer to 1 are better
-        if regions_A < regions_B:
-            return "A"
-        elif regions_A > regions_B:
-            return "B"
+        # tests how much better level A is to B
+        reward = problem.get_reward(level_stats_A, level_stats_B)
 
-        # If both have same number of regions, the level with longest path_length wins
-        if path_length_A > path_length_B:
+        if reward > 0 :
             return "A"
-        elif path_length_A < path_length_B:
+        elif reward < 0 :
             return "B"
         else:
             return None
@@ -301,7 +356,7 @@ def test():
 
 
 if __name__ == "__main__":
-    evaluate_LLM_answers(50, out_file="pairs_low.jsonl")
+    evaluate_LLM_answers(500, out_file="pairs_none.jsonl")
     #test_Connection()
     #test()
 

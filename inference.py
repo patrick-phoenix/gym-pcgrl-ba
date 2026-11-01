@@ -42,9 +42,10 @@ def infer(game, representation, model_path, **kwargs):
 ################################## MAIN ########################################
 game = 'binary'
 representation = 'narrow'
-model_path = 'models/{}/{}/model_1.pkl'.format(game, representation)
+#model_path = 'models/{}/{}/model_3.pkl'.format(game, representation)
+model_path = 'runs/binary_narrow_9_log/best_model.pkl'
 kwargs = {
-    'change_percentage': 0.4,
+    'change_percentage': 0.4,   # original value was 0.4
     'trials': 1,
     'verbose': True
 }

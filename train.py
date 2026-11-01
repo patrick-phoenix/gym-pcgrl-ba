@@ -102,12 +102,12 @@ game = 'binary'
 representation = 'narrow'
 experiment = None
 #steps = 1e8
-steps = 10000
+steps = 50000
 render = False
 logging = True
 #n_cpu = 50
 n_cpu = 5
-reward_net_path = 'reward_net.pt' 
+reward_net_path = None #'reward_net.pt' 
 
 kwargs = {
     'resume': False,

@@ -1,5 +1,6 @@
 import numpy as np
 import json
+import torch
 
 from gym_pcgrl.envs.helper import get_string_map
 import network
@@ -65,8 +66,8 @@ def extract_training_data(list_winner_loser : list):
     losers = torch.zeros(level_pairs, level_size)
 
     for index, (w, l) in enumerate(list_winner_loser):
-        winners[index] = level_to_tensor(w)
-        losers[index] = level_to_tensor(l)
+        winners[index] = network.level_to_tensor(w)
+        losers[index] = network.level_to_tensor(l)
 
     return winners, losers
 
@@ -139,13 +140,14 @@ def evaluate_reward_network(reward_network, data_path, label_filter = "Code"):
 def test():
     # Train and save
     net, optimizer = train_save_reward_network(data_path="pairs_none.jsonl",
-                                                label_filter="Code",
-                                                save_path="reward_net.pt")
-    print("Accuracy before saving: ", evaluate_reward_network(net, "pairs_medium.jsonl"))
+                                                label_filter="LLM",
+                                                save_path="reward_net.pt",
+                                                epochs= 100)
+    print("Accuracy before saving: ", evaluate_reward_network(net, "pairs_low.jsonl"))
 
     # Load and evaluate again
     loaded_net = network.load_reward_network("reward_net.pt")
-    print("Accuracy after loading: ", evaluate_reward_network(loaded_net, "pairs_medium.jsonl"))
+    print("Accuracy after loading: ", evaluate_reward_network(loaded_net, "pairs_low.jsonl"))
 
 
 if __name__ == "__main__":
